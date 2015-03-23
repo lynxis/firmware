@@ -21,3 +21,5 @@ px5g
 
 # IPv6
 kmod-ipv6
+
+openwifi-boot-notifier

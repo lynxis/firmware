@@ -13,6 +13,7 @@ iwinfo
 libiwinfo-lua
 
 # GUI
+rpcd
 uhttpd
 uhttpd-mod-ubus
 uhttpd-mod-tls

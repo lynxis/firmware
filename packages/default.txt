@@ -1,8 +1,10 @@
 -ppp
 -ppp-mod-pppoe
--wpad
+-wpad-mini
+wpad
 
 # Common
+ip
 mtr
 iperf
 vnstat
@@ -23,3 +25,4 @@ px5g
 kmod-ipv6
 
 openwifi-boot-notifier
+preinit-flasher

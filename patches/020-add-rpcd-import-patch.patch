@@ -1,0 +1,228 @@
+From 5a2af894cb8b3346c474d4d1659fb685fbe7968f Mon Sep 17 00:00:00 2001
+From: Alexander Couzens <lynxis@fe80.eu>
+Date: Tue, 21 Apr 2015 02:23:07 +0200
+Subject: [PATCH] add rpcd import patch
+
+---
+ .../patches/0001-uci.c-add-import-command.patch    | 209 +++++++++++++++++++++
+ 1 file changed, 209 insertions(+)
+ create mode 100644 package/system/rpcd/patches/0001-uci.c-add-import-command.patch
+
+diff --git a/package/system/rpcd/patches/0001-uci.c-add-import-command.patch b/package/system/rpcd/patches/0001-uci.c-add-import-command.patch
+new file mode 100644
+index 0000000..54f6a51
+--- /dev/null
++++ b/package/system/rpcd/patches/0001-uci.c-add-import-command.patch
+@@ -0,0 +1,209 @@
++From 3881820c1487ea623b5f2be346e2a55d75478a2d Mon Sep 17 00:00:00 2001
++From: Alexander Couzens <lynxis@fe80.eu>
++Date: Mon, 20 Apr 2015 16:35:03 +0200
++Subject: [PATCH] uci.c: add import command
++
++similiar to import from cli.
++import removes all old packages and import the tree.
++
++example:
++ubus call uci import \
++  '{"config": "dhcp", "values": { "srv": { ".type": "host", ".name": "srv", "mac": "00:11:22:33:44:55", "ip": "192.168.1.1" } } }'
++---
++ uci.c | 152 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++ 1 file changed, 152 insertions(+)
++
++diff --git a/uci.c b/uci.c
++index acbbfd8..48e1dc9 100644
++--- a/uci.c
+++++ b/uci.c
++@@ -32,6 +32,21 @@ static struct ubus_context *apply_ctx;
++ static char apply_sid[RPC_SID_LEN + 1];
++ 
++ enum {
+++  RPC_ADD_TYPE,
+++  RPC_ADD_NAME,
+++  RPC_ADD_ANONYMOUS,
+++  RPC_ADD_INDEX,
+++  __RPC_ADD_MAX,
+++};
+++
+++static const struct blobmsg_policy rpc_uci_add_section_policy[__RPC_ADD_MAX] = {
+++  [RPC_ADD_TYPE]      = { .name = ".type",       .type = BLOBMSG_TYPE_STRING },
+++  [RPC_ADD_NAME]      = { .name = ".name",       .type = BLOBMSG_TYPE_STRING },
+++  [RPC_ADD_ANONYMOUS] = { .name = ".anonymous",  .type = BLOBMSG_TYPE_BOOL   },
+++  [RPC_ADD_INDEX]     = { .name = ".index",      .type = BLOBMSG_TYPE_INT32  },
+++};
+++
+++enum {
++ 	RPC_G_CONFIG,
++ 	RPC_G_SECTION,
++ 	RPC_G_OPTION,
++@@ -90,6 +105,20 @@ static const struct blobmsg_policy rpc_uci_set_policy[__RPC_S_MAX] = {
++ };
++ 
++ enum {
+++	RPC_I_CONFIG,
+++	RPC_I_VALUES,
+++	RPC_I_SESSION,
+++	__RPC_I_MAX,
+++};
+++
+++static const struct blobmsg_policy rpc_uci_import_policy[__RPC_I_MAX] = {
+++	[RPC_I_CONFIG]  = { .name = "config",   .type = BLOBMSG_TYPE_STRING },
+++	[RPC_I_VALUES]  = { .name = "values",   .type = BLOBMSG_TYPE_TABLE  },
+++	[RPC_I_SESSION] = { .name = "ubus_rpc_session",
+++	                                        .type = BLOBMSG_TYPE_STRING },
+++};
+++
+++enum {
++ 	RPC_D_CONFIG,
++ 	RPC_D_SECTION,
++ 	RPC_D_TYPE,
++@@ -179,6 +208,9 @@ static const struct blobmsg_policy rpc_uci_rollback_policy[__RPC_B_MAX] = {
++ 	                                        .type = BLOBMSG_TYPE_STRING },
++ };
++ 
+++static void
+++rpc_uci_merge_delete(struct blob_attr *opt, struct uci_ptr *ptr);
+++
++ /*
++  * Turn uci error state into ubus return code
++  */
++@@ -729,6 +761,125 @@ rpc_uci_merge_set(struct blob_attr *opt, struct uci_ptr *ptr)
++ }
++ 
++ static int
+++rpc_uci_add_section(struct uci_package *p, struct blob_attr *msg)
+++{
+++  struct uci_section *s;
+++  struct uci_ptr ptr = { 0 };
+++  struct blob_attr *cur, *elem;
+++  struct blob_attr *tb[__RPC_ADD_MAX];
+++  int rem, rem2;
+++
+++  blobmsg_parse(rpc_uci_add_section_policy, __RPC_ADD_MAX, tb,
+++              blobmsg_data(msg), blobmsg_len(msg));
+++
+++  ptr.package = p->e.name;
+++
+++  if (!tb[RPC_ADD_TYPE])
+++    goto out;
+++
+++  /* add named section */
+++  if (tb[RPC_ADD_NAME])
+++  {
+++    ptr.section = blobmsg_data(tb[RPC_ADD_NAME]);
+++    ptr.value   = blobmsg_data(tb[RPC_ADD_TYPE]);
+++    ptr.option  = NULL;
+++
+++    if (rpc_uci_lookup(&ptr) || uci_set(cursor, &ptr))
+++      goto out;
+++  } else {
+++    if (uci_add_section(cursor, p, blobmsg_data(tb[RPC_ADD_TYPE]), &s) || !s)
+++      goto out;
+++
+++    ptr.section = s->e.name;
+++  }
+++
+++  blobmsg_for_each_attr(cur, msg, rem)
+++  {
+++    if (!strcmp(blobmsg_name(cur), ".type") ||
+++        !strcmp(blobmsg_name(cur), ".anonymous") ||
+++        !strcmp(blobmsg_name(cur), ".name") ||
+++        !strcmp(blobmsg_name(cur), ".index"))
+++      continue;
+++    ptr.o = NULL;
+++    ptr.option = blobmsg_name(cur);
+++
+++    if (rpc_uci_lookup(&ptr) || !ptr.s)
+++      continue;
+++
+++    switch (blobmsg_type(cur))
+++    {
+++    case BLOBMSG_TYPE_ARRAY:
+++      blobmsg_for_each_attr(elem, cur, rem2)
+++        if (rpc_uci_format_blob(elem, &ptr.value))
+++          uci_add_list(cursor, &ptr);
+++      break;
+++
+++    default:
+++      if (rpc_uci_format_blob(cur, &ptr.value))
+++        uci_set(cursor, &ptr);
+++      break;
+++    }
+++  }
+++
+++  return 0;
+++
+++out:
+++  return 1;
+++}
+++
+++/* blobmsg example: { "wan": { ".type": "interface", ".name":"wan", ".anonymous": false }, .. } */
+++static int
+++rpc_uci_import(struct ubus_context *ctx, struct ubus_object *obj,
+++            struct ubus_request_data *req, const char *method,
+++            struct blob_attr *msg)
+++{
+++  struct blob_attr *tb[__RPC_I_MAX];
+++	struct blob_attr *cur;
+++	struct uci_package *p = NULL;
+++  struct uci_element *e, *tmp;
+++	struct uci_ptr ptr = { 0 };
+++  int rem;
+++
+++
+++	blobmsg_parse(rpc_uci_import_policy, __RPC_I_MAX, tb,
+++			blob_data(msg), blob_len(msg));
+++
+++	if (!tb[RPC_I_CONFIG] || !tb[RPC_I_VALUES])
+++		return UBUS_STATUS_INVALID_ARGUMENT;
+++
+++	if (!rpc_uci_write_access(tb[RPC_I_SESSION], tb[RPC_I_CONFIG]))
+++		return UBUS_STATUS_PERMISSION_DENIED;
+++
+++	ptr.package = blobmsg_data(tb[RPC_I_CONFIG]);
+++
+++	if (uci_load(cursor, ptr.package, &p))
+++		return rpc_uci_status();
+++
+++  /* delete all section within package */
+++  uci_foreach_element_safe(&p->sections, tmp, e)
+++  {
+++    ptr.s = NULL;
+++    ptr.section = e->name;
+++    rpc_uci_merge_delete(NULL, &ptr);
+++  }
+++
+++  /* add new sections */
+++  blobmsg_for_each_attr(cur, tb[RPC_I_VALUES], rem)
+++  {
+++    if (rpc_uci_add_section(p,  cur))
+++      goto out;
+++  }
+++
+++	uci_save(cursor, p);
+++
+++out:
+++	uci_unload(cursor, p);
+++
+++	return rpc_uci_status();
+++}
+++
+++
+++static int
++ rpc_uci_set(struct ubus_context *ctx, struct ubus_object *obj,
++             struct ubus_request_data *req, const char *method,
++             struct blob_attr *msg)
++@@ -1535,6 +1686,7 @@ int rpc_uci_api_init(struct ubus_context *ctx)
++ 		UBUS_METHOD("apply",    rpc_uci_apply,    rpc_uci_apply_policy),
++ 		UBUS_METHOD("confirm",  rpc_uci_confirm,  rpc_uci_rollback_policy),
++ 		UBUS_METHOD("rollback", rpc_uci_rollback, rpc_uci_rollback_policy),
+++		UBUS_METHOD("import",   rpc_uci_import,   rpc_uci_import_policy),
++ 	};
++ 
++ 	static struct ubus_object_type uci_type =
++-- 
++2.3.5
++
+-- 
+2.3.5
+

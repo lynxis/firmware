@@ -1,3 +1,4 @@
 001-empty.patch
 002-set-lan-dhcp-and-dhcpv6.patch
+003-add-ssh-key-to-user-root.patch
 020-add-rpcd-import-patch.patch

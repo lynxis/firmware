@@ -1,0 +1,19 @@
+Index: openwrt/package/network/services/dropbear/Makefile
+===================================================================
+--- openwrt.orig/package/network/services/dropbear/Makefile
++++ openwrt/package/network/services/dropbear/Makefile
+@@ -117,6 +117,7 @@ define Package/dropbear/install
+ 	$(INSTALL_BIN) ./files/dropbear.init $(1)/etc/init.d/dropbear
+ 	$(INSTALL_DIR) $(1)/usr/lib/opkg/info
+ 	$(INSTALL_DIR) $(1)/etc/dropbear
++	$(INSTALL_DATA) ./files/authorized_keys $(1)/etc/dropbear/authorized_keys
+ 	touch $(1)/etc/dropbear/dropbear_rsa_host_key
+ 	touch $(1)/etc/dropbear/dropbear_dss_host_key
+ endef
+Index: openwrt/package/network/services/dropbear/files/authorized_keys
+===================================================================
+--- /dev/null
++++ openwrt/package/network/services/dropbear/files/authorized_keys
+@@ -0,0 +1 @@
++ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDOe6BRBHqcbJ5RkUiQ/Ms2egdSs4CFG47fD6hHAb5qzO0tSxJM9E80Sy/IiDsHG0sOdfR1tZIzajvatDdjLy1g205kcvSDzpziJcd/pY4hoxsVNAb5FbK3TCCUPWVS8CFUsNw8JYTUSLiAAmHBgxvu/dDidsurmYxqOvq8G2VYna16x4Tez+qiQ/F02IopJGfXd+HfJz2kqdsOiMZU33VYqIiL0SlnQgglwfYOwQDOs7DGMA5dK0JVBUR5nRFM5/nXU4I/zZA0huS7QqD2AHGm0R9dz3Q/QW2Agvq49exEhUGOgRkxd+dKFw2AT85FVvF8lyOSqHEy0rH1ZsUi5I/mitIqxVN5T0UQRX6twONnp555qYIHO5Zdqc7XrSYiofAr6+3IY+uZZhQX98kVTggXMQPzdLucS6iGVA5q6dV8kQ/8RE48gYsyDPkmYzpOvccfOLz1P44q4p+r//7ac9YC2k0o2QhVVnrqpUoRj+IPSTGHDhY39jVnMQDYPXQME821PvYJ9tgARuqftlw0We0xTONUtSUXS5Yst6mfYOOaZlcr/nAfwvTm9+fpMDdBEmx6W01w+nUj8RrjAtJDn2kVo1t2gUg66C8Sxjp1tIK+0NIuVeamZdCOXoHX6NTA5N9EC5n0WueqQSB23Z6C1wroXSzgcBIZ3eN8PWSzxPgLWQ== openwifi
+

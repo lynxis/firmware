@@ -1,8 +1,8 @@
-diff --git a/package/base-files/files/lib/functions/uci-defaults.sh b/package/base-files/files/lib/functions/uci-defaults.sh
-index 5a8809d..9970eec 100644
---- a/package/base-files/files/lib/functions/uci-defaults.sh
-+++ b/package/base-files/files/lib/functions/uci-defaults.sh
-@@ -212,10 +212,10 @@ set network.lan='interface'
+Index: openwrt/package/base-files/files/lib/functions/uci-defaults.sh
+===================================================================
+--- openwrt.orig/package/base-files/files/lib/functions/uci-defaults.sh	2015-05-07 20:24:52.718443032 +0200
++++ openwrt/package/base-files/files/lib/functions/uci-defaults.sh	2015-05-07 20:24:52.714442951 +0200
+@@ -212,10 +212,10 @@
  set network.lan.ifname='$ifname'
  set network.lan.force_link=1
  set network.lan.type='bridge'
@@ -17,11 +17,11 @@ index 5a8809d..9970eec 100644
  EOF
  }
  
-diff --git a/target/linux/ar71xx/base-files/etc/uci-defaults/02_network b/target/linux/ar71xx/base-files/etc/uci-defaults/02_network
-index f5c6865..f4c019c 100644
---- a/target/linux/ar71xx/base-files/etc/uci-defaults/02_network
-+++ b/target/linux/ar71xx/base-files/etc/uci-defaults/02_network
-@@ -235,10 +235,9 @@ uap-pro)
+Index: openwrt/target/linux/ar71xx/base-files/etc/uci-defaults/02_network
+===================================================================
+--- openwrt.orig/target/linux/ar71xx/base-files/etc/uci-defaults/02_network	2015-05-07 20:24:52.718443032 +0200
++++ openwrt/target/linux/ar71xx/base-files/etc/uci-defaults/02_network	2015-05-07 20:27:18.957381394 +0200
+@@ -235,10 +235,9 @@
  	;;
  
  nanostation-m-xw)
@@ -34,16 +34,16 @@ index f5c6865..f4c019c 100644
  	;;
  
  wrt160nl)
-@@ -340,7 +339,7 @@ tube2h |\
+@@ -340,7 +339,7 @@
  wndap360 |\
  mynet-rext |\
  wp543)
--       ucidef_set_interface_lan "eth0"
-+       ucidef_set_interface_lan "eth0.23"
-        ;;
+-	ucidef_set_interface_lan "eth0"
++	ucidef_set_interface_lan "eth0.23"
+ 	;;
  
  dir-505-a1)
-@@ -470,6 +469,10 @@ wndr3700)
+@@ -470,6 +469,10 @@
  	uci set network.@switch_port[-1].led='2'
  	;;
  

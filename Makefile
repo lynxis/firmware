@@ -47,15 +47,15 @@ openwrt-update: stamp-clean-openwrt-updated .stamp-openwrt-updated
 
 # patches require updated openwrt working copy
 $(OPENWRT_DIR)/patches: | .stamp-openwrt-updated
-	ln -s $(FW_DIR)/patches $(OPENWRT_DIR)
+	ln -s $(FW_DIR)/patches $@
 
 # feeds
-$(OPENWRT_DIR)/feeds.conf: .stamp-openwrt-updated
-	cp $(FW_DIR)/feeds.conf $(OPENWRT_DIR)/feeds.conf
+$(OPENWRT_DIR)/feeds.conf: .stamp-openwrt-updated feeds.conf
+	cp $(FW_DIR)/feeds.conf $@
 
 # update feeds
 feeds-update: stamp-clean-feeds-updated .stamp-feeds-updated
-.stamp-feeds-updated: $(OPENWRT_DIR)/feeds.conf
+.stamp-feeds-updated: $(OPENWRT_DIR)/feeds.conf unpatch
 	+cd $(OPENWRT_DIR); \
 	  ./scripts/feeds uninstall -a && \
 	  ./scripts/feeds update && \
@@ -188,6 +188,12 @@ stamp-clean-%:
 
 stamp-clean:
 	rm -f .stamp-*
+
+# unpatch needs "patches/" in openwrt
+unpatch: $(OPENWRT_DIR)/patches
+# RC = 2 of quilt --> nothing to be done
+	cd $(OPENWRT_DIR); quilt pop -a -f || [ $$? = 2 ] && true
+	rm -f .stamp-patched
 
 clean: stamp-clean .stamp-openwrt-cleaned
 
